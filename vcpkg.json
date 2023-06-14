@@ -1,0 +1,23 @@
+{
+    "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
+  
+    "name": "intercept",
+    "dependencies": [
+  
+      {
+        "name": "glm",
+        "version>=": "0.9.9.8#2"
+      },
+      {
+        "name": "fmt",
+        "version>=": "9.0.0"
+      },
+      {
+        "name": "sfml",
+        "version>=": "2.5.1#14"
+      }
+    ],
+  
+    "builtin-baseline": "638b1588be3a265a9c7ad5b212cef72a1cad336a"
+  }
+  
