@@ -1,6 +1,7 @@
 
 # cmake config
 cmake_minimum_required(VERSION 3.22.1)
+set(CMAKE_TOOLCHAIN_FILE ./vcpkg/scripts/buildsystems/vcpkg.cmake)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 
