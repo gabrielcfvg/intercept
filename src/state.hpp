@@ -1,150 +1,118 @@
 #pragma once
 
 // builtin
-#include <cstdint>
 #include <memory>
-#include <functional>
+#include <queue>
 
 // local
 #include "assert.hpp"
+#include "entity.hpp"
 #include "slotmap.hpp"
 
-// extern
-#include <SFML/Graphics/RenderWindow.hpp>
-#include <glm/ext/vector_double2.hpp>
-#include <glm/ext/vector_uint2_sized.hpp>
-#include <glm/geometric.hpp>
-#include <optional>
 
-
-
-class StateAccess;
-class Entity;
-using Id = SlotMap<std::unique_ptr<Entity>>::Key;
-
-class Entity {
-
-    public:
-
-        Id id;
-
-    public:
-    
-        virtual std::optional<std::function<void(StateAccess&)>> update(StateAccess&) = 0;
-        virtual void explosion(glm::u32vec2 pos, double radius) = 0;
-        virtual void render(sf::RenderWindow&) = 0;
-        
-        Id get_id() {
-
-            return this->id;
-        }
-
-    public:
-        
-        Entity(Id _id): id(_id) {}
-        virtual ~Entity() = default;
-};
 
 class State {
+private:
 
-    private:
+    SlotMap<std::unique_ptr<Entity>> m_entities;
 
-        SlotMap<std::unique_ptr<Entity>> entities;
+public:
 
-    public:
+    friend class StateManager;
 
-        friend class StateAccess;
+public:
 
-    public:
-
-        void render_entities(sf::RenderWindow& window) {
-
-            rb_runtime_assert(window.isOpen());
-        }
-
+    void update_entities();
+    void render_entities(sf::RenderWindow& window);
 };
 
-class StateAccess {
+class StateManager {
+private:
 
-    private:
+    struct Command {
 
-        State& state;
+        virtual void execute(State&) = 0;
+        virtual ~Command() = default;
+    };
 
-    public:
+    struct RemoveEntityCommand : public Command {
 
-        StateAccess(State& _state): state{_state} {}
+        Id m_entity_id;
 
-        Id add_entity(std::unique_ptr<Entity> new_entity) {
+        explicit RemoveEntityCommand(Id entity_id): m_entity_id(entity_id) {}
 
-            return this->state.entities.push(std::move(new_entity));
+        void execute(State& state) override {
+
+            rb_runtime_assert(state.m_entities.contains(m_entity_id));
+            state.m_entities.remove(m_entity_id);
+        }
+    };
+
+    struct CreateEntityCommand : public Command {
+
+        std::unique_ptr<Entity> m_new_entity;
+
+        explicit CreateEntityCommand(std::unique_ptr<Entity> new_entity): m_new_entity(std::move(new_entity)) {}
+
+        void execute(State& state) override {
+
+            state.m_entities.push(std::move(m_new_entity));
+        }
+    };
+
+    struct ExplosionCommand : public Command {
+
+        StateManager& m_state_manager;
+        glm::u32vec2 m_pos;
+        double m_radius;
+
+        ExplosionCommand(StateManager& state_manager, glm::u32vec2 pos, double radius):
+            m_state_manager(state_manager), m_pos(pos), m_radius(radius) {}
+
+        void execute(State& state) override {
+
+            for (auto& entity: state.m_entities)
+                entity->explosion(m_state_manager, m_pos, m_radius);
+        }
+    };
+
+private:
+
+    State& m_state;
+    std::queue<std::unique_ptr<Command>> m_existential_commands;
+    std::queue<std::unique_ptr<Command>> m_misc_commands;
+
+public:
+
+    explicit StateManager(State& _state): m_state{_state} {}
+
+    Id add_entity(std::unique_ptr<Entity> new_entity);
+    void remove_entity(Id id);
+    void explosion(glm::u32vec2 pos, double radius);
+
+private:
+
+    friend State;
+
+    void flush() {
+
+    again:;
+
+        while (m_existential_commands.empty() == false) {
+
+            auto command = std::move(m_existential_commands.front());
+            m_existential_commands.pop();
+
+            command->execute(m_state);
         }
 
-        void remove_entity(Id id) {
+        if (m_misc_commands.empty() == false) {
 
-            rb_runtime_assert(this->state.entities.contains(id));
-            this->state.entities.remove(id);
+            auto command = std::move(m_misc_commands.front());
+            m_misc_commands.pop();
+
+            command->execute(m_state);
+            goto again;
         }
-
-        void explosion(glm::u32vec2 pos, double radius) {
-
-
-        }
+    }
 };
-
-
-class Explosion: private Entity {
-
-    private:
-
-        glm::u32vec2 pos;
-        double current_radius;
-        double target_radius;
-        double speed;
-
-    public:
-
-        std::optional<std::function<void(StateAccess&)>> update(StateAccess& state) override {
-
-        }
-
-        void render(sf::RenderWindow& window) override {
-
-        }
-
-    public:
-
-        virtual ~Explosion() = default;
-};
-
-
-struct Missile: private Entity {
-
-    private:
-
-        glm::dvec2 pos;
-        glm::dvec2 dir;
-        double flight_distance;
-        double speed;
-
-    public:
-
-        Missile(Id id): Entity(id) {}
-        virtual ~Missile() = default;
-
-    public:
-
-        std::optional<std::function<void(StateAccess&)>> update(StateAccess& state) override {
-
-            auto old_pos = this->pos;
-            this->pos += this->dir * this->speed;
-            this->flight_distance -= glm::distance(old_pos, this->pos);
-
-            if (this->flight_distance < 0)
-                return [=](StateAccess& state){ state.remove_entity(this->id); };
-            else
-                return std::nullopt;
-        }
-};
-
-
-

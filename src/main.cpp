@@ -1,73 +1,95 @@
 
 // builtin
 #include <SFML/Window/VideoMode.hpp>
+#include <chrono>
 #include <string>
+#include <thread>
 
 // extern
+#include <SFML/Graphics/RenderWindow.hpp>
+#include <SFML/Window.hpp>
 #include <fmt/format.h>
 #include <glm/ext/vector_uint2_sized.hpp>
 #include <glm/vec2.hpp>
-#include <SFML/Window.hpp>
-#include <SFML/Graphics/RenderWindow.hpp>
 
 // local
-#include "slotmap.hpp"
 #include "defs.hpp"
-
-
+#include "entities.hpp"
+#include "slotmap.hpp"
+#include "state.hpp"
 
 
 
 class ContextManager {
+private:
 
-    private:
+    sf::RenderWindow m_window;
 
-        sf::RenderWindow window;
+public:
 
-    public:
+    ContextManager() {
 
-        ContextManager() {
+        m_window.create(sf::VideoMode(window_size.x, window_size.y), window_name);
+    }
 
-            window.create(sf::VideoMode(window_size.x, window_size.y), window_name);
-            window.setFramerateLimit(framerate);
-        }
+    void run() {
 
-        void run() {
+        double delta = 0;
+        bool should_continue = true;
+        while (should_continue) {
 
-            while (this->main_loop());
-        }
+            auto start = std::chrono::high_resolution_clock::now();
+            this->cycle(delta, should_continue);
+            auto end = std::chrono::high_resolution_clock::now();
 
-    private:
+            auto const min_time = (1'000 / framerate) * 1'000'000;
+            auto cycle_time = ((end - start)).count();
 
-        bool main_loop() {
-
-            if (this->window.isOpen() == false)
-                return false;
-
-            // graphic
-
-            this->window.clear(sf::Color::Black);
-
-            this->window.display();
-            
-            // input
-            sf::Event event;
-            while (this->window.pollEvent(event)) {
-                
-                if (event.type == sf::Event::Closed)
-                    this->window.close();
+            if (cycle_time < min_time) {
+                auto wait_time = min_time - cycle_time;
+                std::this_thread::sleep_for(std::chrono::nanoseconds(wait_time));
             }
 
-            return true;
+            delta = (double)cycle_time / (double)1'000'000'000;
         }
+    }
 
+private:
+
+    void cycle(double delta, bool& should_continue) {
+
+        if (this->m_window.isOpen() == false)
+            should_continue = false;
+
+        this->input();
+        this->update(delta);
+        this->render();
+    }
+
+    void input() {
+
+        sf::Event event{};
+        while (this->m_window.pollEvent(event)) {
+
+            if (event.type == sf::Event::Closed)
+                this->m_window.close();
+        }
+    }
+
+    void update(double delta) {}
+
+    void render() {
+
+        this->m_window.clear(sf::Color::Black);
+        this->m_window.display();
+    }
 };
 
 
 int main() {
 
     fmt::print("foo bar\n");
-    
+
     ContextManager ctx_manager{};
     ctx_manager.run();
 }

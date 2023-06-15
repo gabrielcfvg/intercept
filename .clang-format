@@ -20,12 +20,14 @@ PenaltyReturnTypeOnItsOwnLine: 999999999
 AlwaysBreakTemplateDeclarations: Yes
 BinPackArguments: true
 BinPackParameters: true
-BreakBeforeBraces: Allman
+BreakBeforeBraces: Attach
+KeepEmptyLinesAtTheStartOfBlocks: true
 BreakBeforeBinaryOperators: None
 BreakBeforeConceptDeclarations: true
 BreakBeforeTernaryOperators: true
 BreakConstructorInitializers: AfterColon
 BreakInheritanceList: AfterColon
+BreakAfterAttributes: Always
 BreakStringLiterals: false
 CompactNamespaces: false
 EmptyLineAfterAccessModifier: Always
@@ -37,7 +39,6 @@ IndentExternBlock: Indent
 IndentGotoLabels: true
 IndentPPDirectives: BeforeHash
 IndentWrappedFunctionNames: false
-KeepEmptyLinesAtTheStartOfBlocks: false
 LambdaBodyIndentation: Signature
 NamespaceIndentation: All
 PPIndentWidth: -1

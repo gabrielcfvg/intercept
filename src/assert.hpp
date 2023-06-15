@@ -5,8 +5,8 @@
 #include <string>
 
 // extern
-#include <fmt/format.h>
 #include <fmt/color.h>
+#include <fmt/format.h>
 
 
 
@@ -21,8 +21,7 @@ inline void panic(std::string const& message) {
 
 void rb_runtime_assert(bool result, std::string const& message);
 
-inline void rb_assert(bool result, std::string const& message = "")
-{
+inline void rb_assert(bool result, std::string const& message = "") {
 #if !defined NDEBUG
 
     rb_runtime_assert(result, message);
@@ -30,8 +29,7 @@ inline void rb_assert(bool result, std::string const& message = "")
 #endif
 }
 
-inline void rb_runtime_assert(bool result, std::string const& message = "")
-{
+inline void rb_runtime_assert(bool result, std::string const& message = "") {
     if (result == true) [[unlikely]]
         return;
 
