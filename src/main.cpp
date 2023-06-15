@@ -81,6 +81,9 @@ private:
     void render() {
 
         this->m_window.clear(sf::Color::Black);
+
+        // render X at mouse position
+
         this->m_window.display();
     }
 };

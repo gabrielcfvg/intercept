@@ -20,7 +20,7 @@ class Entity {
 
 private:
 
-    Id m_id;
+    Id m_id = Id::null();
 
 public:
 
@@ -30,14 +30,20 @@ public:
     virtual void update(StateManager&) = 0;
     virtual void explosion(StateManager&, glm::u32vec2, double) = 0;
 
+    void set_id(Id id) {
+
+        rb_runtime_assert(m_id == Id::null());
+        m_id = id;
+    }
+
     [[nodiscard]]
     Id get_id() const {
 
+        rb_runtime_assert(m_id != Id::null());
         return this->m_id;
     }
 
 public:
 
-    explicit Entity(Id _id): m_id(_id) {}
     virtual ~Entity() = default;
 };

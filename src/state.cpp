@@ -16,6 +16,16 @@ void State::render_entities(sf::RenderWindow& window) {
 
     // TODO: this
 }
+void State::new_missile(glm::u32vec2 target) {
+
+    // TODO: this
+}
+
+void State::create_entity(std::unique_ptr<Entity> new_entity) {
+
+    auto id = m_entities.push(std::move(new_entity));
+    m_entities.get(id).value().get()->set_id(id);
+}
 
 
 
@@ -36,4 +46,16 @@ void StateManager::explosion(glm::u32vec2 pos, double radius) {
 
     auto new_command = new ExplosionCommand{*this, pos, radius};
     m_misc_commands.push(std::unique_ptr<ExplosionCommand>{new_command});
+}
+
+void StateManager::dec_friendly_missiles() {
+
+    rb_assert(m_state.alive_friendly_missiles > 0);
+    m_state.alive_friendly_missiles -= 1;
+}
+
+void StateManager::dec_enemy_missiles() {
+
+    rb_assert(m_state.alive_enemy_missiles > 0);
+    m_state.alive_enemy_missiles -= 1;
 }

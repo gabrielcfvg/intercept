@@ -14,6 +14,8 @@
 class State {
 private:
 
+    uint64_t alive_friendly_missiles = 0;
+    uint64_t alive_enemy_missiles = 0;
     SlotMap<std::unique_ptr<Entity>> m_entities;
 
 public:
@@ -22,8 +24,13 @@ public:
 
 public:
 
+    void new_missile(glm::u32vec2 target);
     void update_entities();
     void render_entities(sf::RenderWindow& window);
+
+private:
+
+    void create_entity(std::unique_ptr<Entity> new_entity);
 };
 
 class StateManager {
@@ -56,7 +63,7 @@ private:
 
         void execute(State& state) override {
 
-            state.m_entities.push(std::move(m_new_entity));
+            state.create_entity(std::move(m_new_entity));
         }
     };
 
@@ -89,6 +96,8 @@ public:
     Id add_entity(std::unique_ptr<Entity> new_entity);
     void remove_entity(Id id);
     void explosion(glm::u32vec2 pos, double radius);
+    void dec_friendly_missiles();
+    void dec_enemy_missiles();
 
 private:
 

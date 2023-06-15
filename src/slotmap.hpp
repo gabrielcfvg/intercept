@@ -153,6 +153,16 @@ public:
     public:
 
         Key(size_t _idx, Version _version): idx(_idx), version(_version) {}
+
+        static Key null() {
+
+            return Key{NONE, 0};
+        }
+
+        friend bool operator==(Key const& a, Key const& b) {
+
+            return (a.idx == b.idx) && (a.version == b.version);
+        }
     };
 
 private:
