@@ -16,7 +16,7 @@ void State::render_entities(sf::RenderWindow& window) {
 
     // TODO: this
 }
-void State::new_missile(glm::u32vec2 target) {
+void State::new_missile(glm::u32vec2 orig, glm::u32vec2 target, MissileModel model) {
 
     // TODO: this
 }

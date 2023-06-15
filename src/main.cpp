@@ -24,12 +24,14 @@ class ContextManager {
 private:
 
     sf::RenderWindow m_window;
+    glm::u32vec2 m_mouse_position = {0, 0};
 
 public:
 
     ContextManager() {
 
-        m_window.create(sf::VideoMode(window_size.x, window_size.y), window_name);
+        auto flags = sf::Style::Close | sf::Style::Titlebar;
+        m_window.create(sf::VideoMode(window_size.x, window_size.y), window_name, flags);
     }
 
     void run() {
@@ -71,9 +73,26 @@ private:
         sf::Event event{};
         while (this->m_window.pollEvent(event)) {
 
-            if (event.type == sf::Event::Closed)
-                this->m_window.close();
+            switch (event.type) {
+
+                case sf::Event::Closed:
+                    this->m_window.close();
+                    break;
+
+                case sf::Event::MouseButtonPressed:
+                    // TODO: lançar míssil contra a posição do mouse
+                    break;
+
+                case sf::Event::MouseMoved:
+                    m_mouse_position = {event.mouseMove.x, event.mouseMove.y};
+                    break;
+
+                default:
+                    break;
+            }
         }
+
+        fmt::println("{}x{}", m_mouse_position.x, m_mouse_position.y);
     }
 
     void update(double delta) {}

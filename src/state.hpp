@@ -6,12 +6,17 @@
 
 // local
 #include "assert.hpp"
+#include "defs.hpp"
 #include "entity.hpp"
 #include "slotmap.hpp"
 
 
 
 class State {
+public:
+
+    friend class StateManager;
+
 private:
 
     uint64_t alive_friendly_missiles = 0;
@@ -20,11 +25,7 @@ private:
 
 public:
 
-    friend class StateManager;
-
-public:
-
-    void new_missile(glm::u32vec2 target);
+    void new_missile(glm::u32vec2 orig, glm::u32vec2 target, MissileModel model);
     void update_entities();
     void render_entities(sf::RenderWindow& window);
 
