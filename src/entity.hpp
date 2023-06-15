@@ -27,7 +27,7 @@ public:
     virtual void render(sf::RenderWindow&) const = 0;
 
     // events
-    virtual void update(StateManager&) = 0;
+    virtual void update(StateManager&, double) = 0;
     virtual void explosion(StateManager&, glm::u32vec2, double) = 0;
 
     void set_id(Id id) {

@@ -1,13 +1,19 @@
 // header
 #include "state.hpp"
 
+// local
+#include "entities.hpp"
+
+// extern
+#include <glm/geometric.hpp>
 
 
-void State::update_entities() {
+
+void State::update_entities(double delta) {
 
     auto state_manager = StateManager{*this};
     for (auto& entity: m_entities)
-        entity->update(state_manager);
+        entity->update(state_manager, delta);
 
     state_manager.flush();
 }
@@ -16,9 +22,18 @@ void State::render_entities(sf::RenderWindow& window) {
 
     // TODO: this
 }
-void State::new_missile(glm::u32vec2 orig, glm::u32vec2 target, MissileModel model) {
+void State::new_missile(glm::u32vec2 orig, glm::u32vec2 target, MissileModel* model) {
 
-    // TODO: this
+    auto distance = glm::distance((glm::dvec2)orig, (glm::dvec2)target);
+    auto dir = glm::normalize((glm::dvec2)orig - (glm::dvec2)target);
+
+    auto missile = std::make_unique<Missile>(orig, (glm::dvec2)target, dir, distance, model);
+    this->create_entity(std::move(missile));
+
+    if (model->friendly == true)
+        m_alive_friendly_missiles += 1;
+    else
+        m_alive_enemy_missiles += 1;
 }
 
 void State::create_entity(std::unique_ptr<Entity> new_entity) {
@@ -50,12 +65,12 @@ void StateManager::explosion(glm::u32vec2 pos, double radius) {
 
 void StateManager::dec_friendly_missiles() {
 
-    rb_assert(m_state.alive_friendly_missiles > 0);
-    m_state.alive_friendly_missiles -= 1;
+    rb_assert(m_state.m_alive_friendly_missiles > 0);
+    m_state.m_alive_friendly_missiles -= 1;
 }
 
 void StateManager::dec_enemy_missiles() {
 
-    rb_assert(m_state.alive_enemy_missiles > 0);
-    m_state.alive_enemy_missiles -= 1;
-}
+    rb_assert(m_state.m_alive_enemy_missiles > 0);
+    m_state.m_alive_enemy_missiles -= 1;
+};

@@ -9,7 +9,7 @@
 
 
 
-class Explosion : private Entity {
+class Explosion : public Entity {
 
 private:
 
@@ -25,14 +25,16 @@ public:
 
 public:
 
-    void update(StateManager& state) override {
+    void update(StateManager& state, double delta) override {
 
-        m_current_radius += m_speed;
+        m_current_radius += m_speed * delta;
         state.explosion(m_pos, m_current_radius);
 
         if (m_current_radius >= m_target_radius)
             state.remove_entity(this->get_id());
     }
+
+    void explosion(StateManager&, glm::u32vec2, double) override {}
 
     void render(sf::RenderWindow&) const override {
 
@@ -41,7 +43,7 @@ public:
 };
 
 
-struct Missile : private Entity {
+struct Missile : public Entity {
 
 private:
 
@@ -49,32 +51,41 @@ private:
     glm::dvec2 m_pos;
     glm::dvec2 m_dir;
     double m_flight_distance;
-    MissileModel m_model;
+    MissileModel* m_model = nullptr;
 
 public:
 
-    Missile(glm::u32vec2& origin, glm::dvec2& pos, glm::dvec2& dir, double flight_distance, MissileModel& model):
+    Missile(glm::u32vec2 origin, glm::dvec2 pos, glm::dvec2 dir, double flight_distance, MissileModel* model):
         origin(origin), m_pos(pos), m_dir(dir), m_flight_distance(flight_distance), m_model(model) {}
 
-    ~Missile() override = default;
-
 public:
 
-    void update(StateManager& state) override {
+    void update(StateManager& state, double delta) override {
 
         auto old_pos = m_pos;
-        m_pos += m_dir * m_model.speed;
+        m_pos += m_dir * m_model->speed * delta;
         m_flight_distance -= glm::distance(old_pos, m_pos);
 
         if (m_flight_distance < 0) {
 
             state.remove_entity(this->get_id());
 
-            if (m_model.friendly == true)
+            auto explosion = std::make_unique<Explosion>(m_pos, 0, m_model->explosion_size, m_model->explosion_speed);
+            state.add_entity(std::move(explosion));
+
+            if (m_model->friendly == true)
                 state.dec_friendly_missiles();
             else
                 state.dec_enemy_missiles();
         }
+        else if (m_pos.x >= window_size.x || m_pos.y >= window_size.y)
+            state.remove_entity(this->get_id());
+    }
+
+    void explosion(StateManager& state, glm::u32vec2 position, double radius) override {
+
+        if (glm::distance((glm::dvec2)position, m_pos) <= radius)
+            state.remove_entity(this->get_id());
     }
 
     void render(sf::RenderWindow&) const override {

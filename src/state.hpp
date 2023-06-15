@@ -19,20 +19,21 @@ public:
 
 private:
 
-    uint64_t alive_friendly_missiles = 0;
-    uint64_t alive_enemy_missiles = 0;
+    uint64_t m_alive_friendly_missiles = 0;
+    uint64_t m_alive_enemy_missiles = 0;
     SlotMap<std::unique_ptr<Entity>> m_entities;
 
 public:
 
-    void new_missile(glm::u32vec2 orig, glm::u32vec2 target, MissileModel model);
-    void update_entities();
+    void new_missile(glm::u32vec2 orig, glm::u32vec2 target, MissileModel* model);
+    void update_entities(double delta);
     void render_entities(sf::RenderWindow& window);
 
 private:
 
     void create_entity(std::unique_ptr<Entity> new_entity);
 };
+
 
 class StateManager {
 private:

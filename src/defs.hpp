@@ -21,9 +21,12 @@ inline uint32_t const framerate = 60;
 struct MissileModel {
     glm::u8vec3 color;
     double speed;
-    double explosion_size;
     bool friendly;
+    double explosion_size;
+    double explosion_speed;
 };
 
-inline auto friendly_missile = MissileModel{.color = {0, 0, 255}, .speed = 2, .explosion_size = 2, .friendly = true};
-inline auto enemy_missile = MissileModel{.color = {255, 0, 0}, .speed = 1, .explosion_size = 3, .friendly = false};
+inline auto friendly_missile =
+    MissileModel{.color = {0, 0, 255}, .speed = 2, .friendly = true, .explosion_size = 2, .explosion_speed = 1};
+inline auto enemy_missile =
+    MissileModel{.color = {255, 0, 0}, .speed = 1, .friendly = false, .explosion_size = 3, .explosion_speed = 1};

@@ -3,7 +3,6 @@
 cmake_minimum_required(VERSION 3.22.1)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_TOOLCHAIN_FILE ./vcpkg/scripts/buildsystems/vcpkg.cmake CACHE FILEPATH "vcpkg root path")
-message("path.................. ${CMAKE_TOOLCHAIN_FILE}")
 
 # project config
 

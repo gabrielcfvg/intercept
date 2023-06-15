@@ -24,6 +24,7 @@ class ContextManager {
 private:
 
     sf::RenderWindow m_window;
+    State m_state;
     glm::u32vec2 m_mouse_position = {0, 0};
 
 public:
@@ -81,6 +82,7 @@ private:
 
                 case sf::Event::MouseButtonPressed:
                     // TODO: lançar míssil contra a posição do mouse
+                    m_state.new_missile(gun_position, m_mouse_position, &friendly_missile);
                     break;
 
                 case sf::Event::MouseMoved:
@@ -95,7 +97,10 @@ private:
         fmt::println("{}x{}", m_mouse_position.x, m_mouse_position.y);
     }
 
-    void update(double delta) {}
+    void update(double delta) {
+
+        m_state.update_entities(delta);
+    }
 
     void render() {
 

@@ -20,7 +20,24 @@ PenaltyReturnTypeOnItsOwnLine: 999999999
 AlwaysBreakTemplateDeclarations: Yes
 BinPackArguments: true
 BinPackParameters: true
-BreakBeforeBraces: Attach
+BreakBeforeBraces: Custom
+BraceWrapping:
+  BeforeElse: true
+  AfterCaseLabel: false
+  AfterClass: false
+  AfterControlStatement: Never
+  AfterEnum: false
+  AfterFunction: false
+  AfterNamespace: false
+  AfterStruct: false
+  AfterUnion: false
+  AfterExternBlock: false
+  BeforeCatch: false
+  BeforeLambdaBody: false
+  BeforeWhile: false
+  SplitEmptyFunction: false
+  SplitEmptyRecord: false
+  SplitEmptyNamespace: false
 KeepEmptyLinesAtTheStartOfBlocks: true
 BreakBeforeBinaryOperators: None
 BreakBeforeConceptDeclarations: true
@@ -50,7 +67,7 @@ SpaceAfterTemplateKeyword: true
 SpaceBeforeParens: ControlStatements
 SpaceBeforeRangeBasedForLoopColon: false
 SpacesInLineCommentPrefix:
-    Minimum: 1
-    Maximum: -1
+  Minimum: 1
+  Maximum: -1
 MaxEmptyLinesToKeep: 3
 SpaceBeforeCtorInitializerColon: false
