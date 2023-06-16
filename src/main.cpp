@@ -6,6 +6,8 @@
 #include <thread>
 
 // extern
+#include "new_slotmap.hpp"
+#include <SFML/Graphics/RectangleShape.hpp>
 #include <SFML/Graphics/RenderWindow.hpp>
 #include <SFML/Window.hpp>
 #include <fmt/format.h>
@@ -53,7 +55,8 @@ public:
                 std::this_thread::sleep_for(std::chrono::nanoseconds(wait_time));
             }
 
-            delta = (double)cycle_time / (double)1'000'000'000;
+            delta = (double)glm::max((uint64_t)cycle_time, (uint64_t)min_time) / (double)1'000'000'000;
+            fmt::println("delta: {}", delta);
         }
     }
 
@@ -93,8 +96,6 @@ private:
                     break;
             }
         }
-
-        fmt::println("{}x{}", m_mouse_position.x, m_mouse_position.y);
     }
 
     void update(double delta) {
@@ -106,9 +107,18 @@ private:
 
         this->m_window.clear(sf::Color::Black);
 
-        // render X at mouse position
+        // render ground
+        auto brown_color = sf::Color{61, 40, 22};
+        auto ground_rectangle = sf::RectangleShape{};
+        ground_rectangle.setSize({(float)window_size.x, (float)ground_level});
+        ground_rectangle.setFillColor(brown_color);
+        ground_rectangle.setPosition(0, (float)window_size.y - (float)ground_level);
+        m_window.draw(ground_rectangle);
 
-        this->m_window.display();
+        // render state
+        m_state.render_entities(m_window);
+
+        m_window.display();
     }
 };
 

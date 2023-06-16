@@ -20,14 +20,16 @@ void State::update_entities(double delta) {
 
 void State::render_entities(sf::RenderWindow& window) {
 
-    // TODO: this
+    for (auto& entity: m_entities)
+        entity->render(window);
 }
+
 void State::new_missile(glm::u32vec2 orig, glm::u32vec2 target, MissileModel* model) {
 
     auto distance = glm::distance((glm::dvec2)orig, (glm::dvec2)target);
-    auto dir = glm::normalize((glm::dvec2)orig - (glm::dvec2)target);
+    auto dir = glm::normalize((glm::dvec2)target - (glm::dvec2)orig);
 
-    auto missile = std::make_unique<Missile>(orig, (glm::dvec2)target, dir, distance, model);
+    auto missile = std::make_unique<Missile>(orig, dir, distance, model);
     this->create_entity(std::move(missile));
 
     if (model->friendly == true)

@@ -19,7 +19,7 @@ class SlotMap {
 private:
 
     // it is theoretically and practically impossible for an item to exist with the maximum
-    // position, since the smallest possible slot has a size greater than 1 byte and no modern
+    // position, since the smallest possible slot has a m_size greater than 1 byte and no modern
     // computer has a memory space as large as size_t allows
     static inline size_t NONE = SIZE_MAX;
     using Version = uint32_t;
@@ -106,7 +106,7 @@ private:
 
         reference operator*() {
             rb_assert(this->slotmap.valid_index(this->idx));
-            return this->slotmap.data[this->idx].occupied().value;
+            return this->slotmap.m_data[this->idx].occupied().value;
         }
 
         pointer operator->() {
@@ -116,7 +116,7 @@ private:
         iterator operator++() // prefix
         {
             rb_assert(this->slotmap.valid_index(this->idx));
-            this->idx = this->slotmap.data[this->idx].occupied().next_occupied;
+            this->idx = this->slotmap.m_data[this->idx].occupied().next_occupied;
             rb_assert(this->slotmap.valid_index(this->idx) || this->idx == NONE);
             return *this;
         }
@@ -147,12 +147,12 @@ public:
 
         friend SlotMap<T>;
 
-        size_t idx;
-        Version version;
+        size_t m_idx;
+        Version m_version;
 
     public:
 
-        Key(size_t _idx, Version _version): idx(_idx), version(_version) {}
+        Key(size_t _idx, Version _version): m_idx(_idx), m_version(_version) {}
 
         static Key null() {
 
@@ -161,13 +161,13 @@ public:
 
         friend bool operator==(Key const& a, Key const& b) {
 
-            return (a.idx == b.idx) && (a.version == b.version);
+            return (a.m_idx == b.m_idx) && (a.m_version == b.m_version);
         }
     };
 
 private:
 
-    std::vector<Slot> data;
+    std::vector<Slot> m_data;
     size_t empty_list_head;
     size_t first_occupied;
 
@@ -178,13 +178,13 @@ public:
     SlotMap(SlotMap const&) = delete;
     SlotMap& operator=(SlotMap const&) = delete;
 
-    SlotMap(): data{}, empty_list_head(NONE), first_occupied(NONE), _size(0) {}
+    SlotMap(): m_data{}, empty_list_head(NONE), first_occupied(NONE), _size(0) {}
 
     std::optional<std::reference_wrapper<T>> get(Key key) {
         if (this->contains(key) == false)
             return std::nullopt;
 
-        return std::optional{std::reference_wrapper{this->data[key.idx].occupied().value}};
+        return std::optional{std::reference_wrapper{this->m_data[key.m_idx].occupied().value}};
     }
 
     T& unchecked_get(Key key) {
@@ -194,29 +194,36 @@ public:
 
     [[nodiscard]]
     Key push(T&& value) {
+
+        // caso não haja nenhum slot vazio, aloca um novo slot
         if (this->empty_list_head == NONE) {
             this->push_empty_slot();
-            rb_assert(this->empty_list_head != NONE);
         }
 
-        rb_assert(this->empty_list_head < this->data.size());
+        // é garantido que haja um slot disponível, já que um novo é alocado caso não haja nenhum
+        rb_assert(this->empty_list_head != NONE);
+        // o slot vazio apontado pela lista deve ter um index válido
+        rb_assert(this->empty_list_head < this->m_data.size());
 
         size_t slot_idx = this->empty_list_head;
-        Slot* slot = &this->data[slot_idx];
+        Slot* slot = &this->m_data[slot_idx];
 
+        // o slot apontado pela lista de m_slots vazios deveria ser vazio
         rb_assert(slot->is_empty());
         this->empty_list_head = slot->empty().next_free;
 
 
         size_t last_occupied = NONE;
         if (slot_idx != 0) {
+
+
             last_occupied = slot_idx - 1;
-            rb_assert(this->data[last_occupied].is_occupied());
+            rb_assert(this->m_data[last_occupied].is_occupied());
         }
 
         size_t next_occupied = NONE;
         if (last_occupied != NONE)
-            next_occupied = this->data[last_occupied].occupied().next_occupied;
+            next_occupied = this->m_data[last_occupied].occupied().next_occupied;
         else
             next_occupied = this->first_occupied;
 
@@ -224,14 +231,14 @@ public:
             this->first_occupied = slot_idx;
 
         if (next_occupied != NONE)
-            rb_assert(this->data[next_occupied].is_occupied());
+            rb_assert(this->m_data[next_occupied].is_occupied());
 
 
         if (last_occupied != NONE)
-            this->data[last_occupied].occupied().next_occupied = slot_idx;
+            this->m_data[last_occupied].occupied().next_occupied = slot_idx;
 
         if (next_occupied != NONE)
-            this->data[next_occupied].occupied().last_occupied = slot_idx;
+            this->m_data[next_occupied].occupied().last_occupied = slot_idx;
 
         slot->to_occupied(std::move(value), next_occupied, last_occupied);
         this->_size += 1;
@@ -242,20 +249,20 @@ public:
         if (this->contains(key) == false)
             return std::nullopt;
 
-        size_t slot_idx = key.idx;
-        Slot* slot = &this->data[slot_idx];
+        size_t slot_idx = key.m_idx;
+        Slot* slot = &this->m_data[slot_idx];
 
 
         if (auto last_occupied = slot->occupied().last_occupied; last_occupied != NONE) {
-            rb_assert(this->data[last_occupied].is_occupied());
-            rb_assert(this->data[last_occupied].occupied().next_occupied == slot_idx);
-            this->data[last_occupied].occupied().next_occupied = slot->occupied().next_occupied;
+            rb_assert(this->m_data[last_occupied].is_occupied());
+            rb_assert(this->m_data[last_occupied].occupied().next_occupied == slot_idx);
+            this->m_data[last_occupied].occupied().next_occupied = slot->occupied().next_occupied;
         }
 
         if (auto next_occupied = slot->occupied().next_occupied; next_occupied != NONE) {
-            rb_assert(this->data[next_occupied].is_occupied());
-            rb_assert(this->data[next_occupied].occupied().last_occupied == slot_idx);
-            this->data[next_occupied].occupied().last_occupied = slot->occupied().last_occupied;
+            rb_assert(this->m_data[next_occupied].is_occupied());
+            rb_assert(this->m_data[next_occupied].occupied().last_occupied == slot_idx);
+            this->m_data[next_occupied].occupied().last_occupied = slot->occupied().last_occupied;
         }
 
         if (slot_idx == this->first_occupied) {
@@ -279,20 +286,20 @@ public:
     }
 
     bool contains(Key key) const {
-        if (this->valid_index(key.idx) == false)
+        if (this->valid_index(key.m_idx) == false)
             return false;
 
-        if (this->data[key.idx].version != key.version)
+        if (this->m_data[key.m_idx].m_version != key.m_version)
             return false;
 
         return true;
     }
 
     bool valid_index(size_t idx) const {
-        if (idx >= this->data.size())
+        if (idx >= this->m_data.size())
             return false;
 
-        if (this->data[idx].is_occupied() == false)
+        if (this->m_data[idx].is_occupied() == false)
             return false;
 
         return true;
@@ -303,7 +310,7 @@ public:
     }
 
     size_t capacity() const {
-        return this->data.size();
+        return this->m_data.size();
     }
 
     iterator begin() {
@@ -322,8 +329,8 @@ private:
     size_t push_empty_slot() {
         rb_assert(this->empty_list_head == NONE);
 
-        this->data.push_back(Slot::new_empty(NONE));
-        this->empty_list_head = this->data.size() - 1;
+        this->m_data.push_back(Slot::new_empty(NONE));
+        this->empty_list_head = this->m_data.size() - 1;
 
         return empty_list_head;
     }
