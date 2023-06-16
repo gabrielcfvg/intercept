@@ -11,7 +11,8 @@ project(intercept CXX)
 add_executable(intercept
 
         src/main.cpp
-        src/state.cpp)
+        src/state.cpp
+        )
 
 # dependencies
 

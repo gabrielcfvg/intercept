@@ -41,12 +41,12 @@ void State::new_missile(glm::u32vec2 orig, glm::u32vec2 target, MissileModel* mo
 void State::create_entity(std::unique_ptr<Entity> new_entity) {
 
     auto id = m_entities.push(std::move(new_entity));
-    m_entities.get(id).value().get()->set_id(id);
+    m_entities.get(id)->set_id(id);
 }
 
 
 
-Id StateManager::add_entity(std::unique_ptr<Entity> new_entity) {
+void StateManager::add_entity(std::unique_ptr<Entity> new_entity) {
 
     auto new_command = new CreateEntityCommand{std::move(new_entity)};
     m_existential_commands.push(std::unique_ptr<CreateEntityCommand>{new_command});

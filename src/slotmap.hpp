@@ -3,10 +3,6 @@
 // builtin
 #include <cstddef>
 #include <cstdint>
-#include <functional>
-#include <iterator>
-#include <optional>
-#include <variant>
 #include <vector>
 
 // local
@@ -16,70 +12,105 @@
 
 template <typename T>
 class SlotMap {
+
 private:
 
     // it is theoretically and practically impossible for an item to exist with the maximum
-    // position, since the smallest possible slot has a m_size greater than 1 byte and no modern
-    // computer has a memory space as large as size_t allows
+    // position, since the smallest possible slot has m_size greater than 1 byte
     static inline size_t NONE = SIZE_MAX;
-    using Version = uint32_t;
+    using Version = uint64_t;
 
-    struct EmptySlot {
-        size_t next_free;
+    enum class SlotType {
+        Empty,
+        Occupied
     };
 
-    struct OccupiedSlot {
-        T value;
-        size_t next_occupied;
-        size_t last_occupied;
-    };
+    class Slot {
 
-    struct Slot {
-        Version version;
-        std::variant<OccupiedSlot, EmptySlot> content;
+    private:
 
-        static Slot new_empty(size_t next_free) {
-            return Slot{0, EmptySlot{next_free}};
-        }
+        Version m_version;
+        SlotType m_type;
+        size_t m_idx_or_next_free;
 
-        void to_occupied(T value, size_t next, size_t last) {
-            rb_assert(this->is_empty());
-            this->content = OccupiedSlot{.value = std::move(value), .next_occupied = next, .last_occupied = last};
-        }
+    private:
 
-        [[nodiscard]]
-        T to_empty(size_t next_free) {
-            rb_assert(this->is_occupied());
+        Slot(Version version, SlotType type, size_t idx_or_next_free):
+            m_version(version), m_type(type), m_idx_or_next_free(idx_or_next_free) {}
 
-            auto ret = std::move(this->occupied().value);
-            this->content = EmptySlot{.next_free = next_free};
-            ++this->version;
+    public:
 
-            return ret;
-        }
-
-        Slot(Version _version, decltype(content) _content): version(_version), content(std::move(_content)) {}
-        Slot(Slot&& other): version(other.version), content(std::move(other.content)) {}
+        Slot(Slot&&) noexcept = default;
+        Slot& operator=(Slot&&) noexcept = default;
         Slot(Slot const&) = delete;
         Slot& operator=(Slot const&) = delete;
 
+        static Slot new_empty(size_t next_free) {
+
+            return Slot{0, SlotType::Empty, next_free};
+        }
+
+        void to_occupied(size_t idx) {
+
+            rb_runtime_assert(m_type == SlotType::Empty);
+            m_type = SlotType::Occupied;
+            m_idx_or_next_free = idx;
+        }
+
+        void to_empty(size_t next_free) {
+
+            rb_assert(m_type == SlotType::Occupied);
+            m_type = SlotType::Empty;
+            m_idx_or_next_free = next_free;
+            m_version += 1;
+        }
+
+        size_t new_idx(size_t idx) {
+
+            rb_assert(m_type == SlotType::Occupied);
+            auto output = m_idx_or_next_free;
+            m_idx_or_next_free = idx;
+            return output;
+        }
+
+        [[nodiscard]]
         bool is_empty() const {
-            return std::holds_alternative<EmptySlot>(this->content);
+
+            return m_type == SlotType::Empty;
         }
 
+        [[nodiscard]]
         bool is_occupied() const {
-            return std::holds_alternative<OccupiedSlot>(this->content);
+
+            return m_type == SlotType::Occupied;
         }
 
-        EmptySlot& empty() {
+        [[nodiscard]]
+        size_t get_next_free() const {
+
             rb_assert(this->is_empty());
-            return std::get<EmptySlot>(this->content);
+            return this->m_idx_or_next_free;
         }
 
-        OccupiedSlot& occupied() {
+        [[nodiscard]]
+        size_t get_idx() const {
+
             rb_assert(this->is_occupied());
-            return std::get<OccupiedSlot>(this->content);
+            return this->m_idx_or_next_free;
         }
+
+        [[nodiscard]]
+        Version get_version() const {
+
+            return m_version;
+        }
+    };
+    static_assert(sizeof(Slot) > 1);
+
+    struct DataSlot {
+
+        size_t m_slot_idx;
+        T m_value;
     };
 
     class iterator {
@@ -95,18 +126,20 @@ private:
 
     private:
 
-        SlotMap<T>& slotmap;
-        size_t idx;
+        SlotMap<T>& m_slotmap;
+        size_t m_idx;
 
     private:
 
-        iterator(SlotMap<T>& _slotmap, size_t _idx): slotmap(_slotmap), idx(_idx) {}
+        iterator(SlotMap<T>& slotmap, size_t idx): m_slotmap(slotmap), m_idx(idx) {}
 
     public:
 
         reference operator*() {
-            rb_assert(this->slotmap.valid_index(this->idx));
-            return this->slotmap.m_data[this->idx].occupied().value;
+
+            rb_assert(m_slotmap.is_slot_valid(m_idx));
+            size_t data_idx = m_slotmap.m_slots[m_idx].get_idx();
+            return m_slotmap.m_data[data_idx].m_value;
         }
 
         pointer operator->() {
@@ -115,9 +148,17 @@ private:
 
         iterator operator++() // prefix
         {
-            rb_assert(this->slotmap.valid_index(this->idx));
-            this->idx = this->slotmap.m_data[this->idx].occupied().next_occupied;
-            rb_assert(this->slotmap.valid_index(this->idx) || this->idx == NONE);
+            rb_assert(m_slotmap.is_slot_valid(m_idx));
+
+            size_t data_idx = m_slotmap.m_slots[m_idx].get_idx();
+            size_t next_data_idx = data_idx + 1;
+
+            if (next_data_idx < m_slotmap.m_data.size())
+                m_idx = m_slotmap.m_data[next_data_idx].m_slot_idx;
+            else
+                m_idx = NONE;
+
+            rb_assert(m_slotmap.is_slot_valid(m_idx) || m_idx == NONE);
             return *this;
         }
 
@@ -130,7 +171,7 @@ private:
         }
 
         friend bool operator==(iterator const& a, iterator const& b) {
-            return (&a.slotmap == &b.slotmap) && (a.idx == b.idx);
+            return (&a.m_slotmap == &b.m_slotmap) && (a.m_idx == b.m_idx);
         }
 
         friend bool operator!=(iterator const& a, iterator const& b) {
@@ -138,200 +179,225 @@ private:
         }
     };
 
-    friend class iterator;
-
 public:
 
     class Key {
-    private:
 
         friend SlotMap<T>;
 
-        size_t m_idx;
         Version m_version;
+        size_t m_idx;
+
+        Key(Version version, size_t idx): m_version(version), m_idx(idx) {}
 
     public:
 
-        Key(size_t _idx, Version _version): m_idx(_idx), m_version(_version) {}
+        [[nodiscard]]
+        static Key __build_key(size_t idx, Version version) {
 
+            return Key{version, idx};
+        }
+
+        [[nodiscard]]
         static Key null() {
 
-            return Key{NONE, 0};
+            return __build_key(NONE, 0);
         }
 
         friend bool operator==(Key const& a, Key const& b) {
 
             return (a.m_idx == b.m_idx) && (a.m_version == b.m_version);
         }
+
+        [[nodiscard]]
+        size_t get_idx() const {
+
+            return m_idx;
+        }
+
+        [[nodiscard]]
+        Version get_version() {
+
+            return m_version;
+        }
     };
 
 private:
 
-    std::vector<Slot> m_data;
-    size_t empty_list_head;
-    size_t first_occupied;
-
-    size_t _size;
+    size_t m_next_free_head;
+    std::vector<Slot> m_slots;
+    std::vector<DataSlot> m_data;
+    size_t m_size; // número de m_slots ocupados e de items em 'm_data'
 
 public:
 
-    SlotMap(SlotMap const&) = delete;
-    SlotMap& operator=(SlotMap const&) = delete;
+    // public funcs
 
-    SlotMap(): m_data{}, empty_list_head(NONE), first_occupied(NONE), _size(0) {}
+    SlotMap(): m_next_free_head(NONE), m_slots(), m_data(), m_size(0) {}
 
-    std::optional<std::reference_wrapper<T>> get(Key key) {
-        if (this->contains(key) == false)
-            return std::nullopt;
+    [[nodiscard]]
+    bool contains(Key key) const {
 
-        return std::optional{std::reference_wrapper{this->m_data[key.m_idx].occupied().value}};
-    }
+        if (this->is_slot_valid(key.m_idx) == false)
+            return false;
 
-    T& unchecked_get(Key key) {
-        rb_assert(this->contains(key));
-        return this->get(key).value().get();
+        auto& slot = m_slots[key.m_idx];
+
+        if (slot.is_empty())
+            return false;
+
+        if (slot.get_version() != key.m_version)
+            return false;
+
+        return true;
     }
 
     [[nodiscard]]
-    Key push(T&& value) {
+    T& get(Key key) {
 
-        // caso não haja nenhum slot vazio, aloca um novo slot
-        if (this->empty_list_head == NONE) {
+        rb_runtime_assert(this->contains(key));
+        return m_data[m_slots[key.m_idx].get_idx()].m_value;
+    }
+
+    Key push(T&& new_item) {
+
+        // aloca um novo slot vazio caso não haja nenhum disponível
+        if (m_next_free_head == NONE)
             this->push_empty_slot();
-        }
 
-        // é garantido que haja um slot disponível, já que um novo é alocado caso não haja nenhum
-        rb_assert(this->empty_list_head != NONE);
-        // o slot vazio apontado pela lista deve ter um index válido
-        rb_assert(this->empty_list_head < this->m_data.size());
+        rb_assert(m_next_free_head != NONE);
+        rb_assert(m_next_free_head < m_slots.size());
 
-        size_t slot_idx = this->empty_list_head;
-        Slot* slot = &this->m_data[slot_idx];
+        // reserva o primeiro slot vazio da fila para ser o slot do novo item
+        size_t slot_idx = m_next_free_head;
+        Slot& slot = m_slots[slot_idx];
+        rb_assert(slot.is_empty());
 
-        // o slot apontado pela lista de m_slots vazios deveria ser vazio
-        rb_assert(slot->is_empty());
-        this->empty_list_head = slot->empty().next_free;
+        // atribuí o segundo item na lista de slots livres para a primeira posição
+        m_next_free_head = slot.get_next_free();
 
+        // garante que o próximo item na lista de slots livres é válido
+        if (m_next_free_head != NONE)
+            rb_assert(m_slots[m_next_free_head].is_empty());
 
-        size_t last_occupied = NONE;
-        if (slot_idx != 0) {
+        // insere o novo item no vetor contínuo, apontando para o slot reservado
+        m_data.push_back(DataSlot{slot_idx, std::move(new_item)});
 
+        // muda o estado do slot reservado para ocupado, fazendo ele apontar para a posição
+        // do valor no vetor contínuo
+        slot.to_occupied(m_data.size() - 1);
 
-            last_occupied = slot_idx - 1;
-            rb_assert(this->m_data[last_occupied].is_occupied());
-        }
+        rb_assert(slot.get_idx() == m_data.size() - 1);
+        rb_assert(m_data.back().m_slot_idx == slot_idx);
 
-        size_t next_occupied = NONE;
-        if (last_occupied != NONE)
-            next_occupied = this->m_data[last_occupied].occupied().next_occupied;
-        else
-            next_occupied = this->first_occupied;
+        m_size += 1;
 
-        if (slot_idx == 0)
-            this->first_occupied = slot_idx;
-
-        if (next_occupied != NONE)
-            rb_assert(this->m_data[next_occupied].is_occupied());
-
-
-        if (last_occupied != NONE)
-            this->m_data[last_occupied].occupied().next_occupied = slot_idx;
-
-        if (next_occupied != NONE)
-            this->m_data[next_occupied].occupied().last_occupied = slot_idx;
-
-        slot->to_occupied(std::move(value), next_occupied, last_occupied);
-        this->_size += 1;
-        return Key{slot_idx, slot->version};
-    }
-
-    std::optional<T> remove(Key key) {
-        if (this->contains(key) == false)
-            return std::nullopt;
-
-        size_t slot_idx = key.m_idx;
-        Slot* slot = &this->m_data[slot_idx];
-
-
-        if (auto last_occupied = slot->occupied().last_occupied; last_occupied != NONE) {
-            rb_assert(this->m_data[last_occupied].is_occupied());
-            rb_assert(this->m_data[last_occupied].occupied().next_occupied == slot_idx);
-            this->m_data[last_occupied].occupied().next_occupied = slot->occupied().next_occupied;
-        }
-
-        if (auto next_occupied = slot->occupied().next_occupied; next_occupied != NONE) {
-            rb_assert(this->m_data[next_occupied].is_occupied());
-            rb_assert(this->m_data[next_occupied].occupied().last_occupied == slot_idx);
-            this->m_data[next_occupied].occupied().last_occupied = slot->occupied().last_occupied;
-        }
-
-        if (slot_idx == this->first_occupied) {
-            rb_assert(slot->occupied().last_occupied == NONE);
-            this->first_occupied = slot->occupied().next_occupied;
-        }
-
-
-        auto value = slot->to_empty(this->empty_list_head);
-        rb_assert(slot->is_empty());
-        this->empty_list_head = slot_idx;
-
-        this->_size -= 1;
-
-        return std::optional{std::move(value)};
-    }
-
-    T unchecked_remove(Key key) {
+        auto key = Key{slot.get_version(), slot_idx};
         rb_assert(this->contains(key));
-        return this->remove(key).value();
+        return key;
     }
 
-    bool contains(Key key) const {
-        if (this->valid_index(key.m_idx) == false)
-            return false;
+    T remove(Key key) {
 
-        if (this->m_data[key.m_idx].m_version != key.m_version)
-            return false;
+        rb_runtime_assert(this->contains(key));
 
-        return true;
+        auto slot_idx = key.m_idx;
+        auto& slot = m_slots[slot_idx];
+        auto data_idx = slot.get_idx();
+
+        // torna o slot vazio e coloca ele no início da lista de slots vazios
+        // colocando o primeiro anterior na segunda posição;
+        slot.to_empty(m_next_free_head);
+        m_next_free_head = slot_idx;
+
+        T item = this->swap_remove_data(data_idx);
+        m_size -= 1;
+
+        return item;
     }
 
-    bool valid_index(size_t idx) const {
-        if (idx >= this->m_data.size())
-            return false;
-
-        if (this->m_data[idx].is_occupied() == false)
-            return false;
-
-        return true;
-    }
-
+    [[nodiscard]]
     size_t size() const {
-        return this->_size;
+
+        return m_size;
     }
 
-    size_t capacity() const {
-        return this->m_data.size();
+    [[nodiscard]]
+    size_t capacity() {
+
+        return m_slots.size();
     }
 
-    iterator begin() {
-        return iterator{*this, this->first_occupied};
+    SlotMap::iterator begin() {
+
+        size_t idx = NONE;
+
+        if (m_data.empty() == false)
+            idx = m_data[0].m_slot_idx;
+
+        rb_assert(idx == NONE || this->is_slot_valid(idx));
+
+        return iterator{*this, idx};
     }
 
     iterator end() {
+
         return iterator{*this, NONE};
     }
 
-    // T pop_first();
-    // void clear();
 
 private:
 
-    size_t push_empty_slot() {
-        rb_assert(this->empty_list_head == NONE);
+    [[nodiscard]]
+    bool is_slot_valid(size_t slot_idx) const {
 
-        this->m_data.push_back(Slot::new_empty(NONE));
-        this->empty_list_head = this->m_data.size() - 1;
+        if (slot_idx >= m_slots.size())
+            return false;
 
-        return empty_list_head;
+        auto& slot = m_slots[slot_idx];
+
+        if (slot.is_occupied()) {
+            if (slot.get_idx() >= m_data.size() && m_data[slot.get_idx()].m_slot_idx != slot_idx)
+                return false;
+        }
+        else {
+            if (slot.get_next_free() != NONE && slot.get_next_free() >= m_slots.size())
+                return false;
+        }
+
+        return true;
+    }
+
+    void push_empty_slot() {
+
+        m_slots.push_back(Slot::new_empty(NONE));
+        m_next_free_head = m_slots.size() - 1;
+    }
+
+    T swap_remove_data(size_t idx) {
+
+        rb_assert(idx < m_data.size());
+
+        // se o item a ser removido for o último no vetor contínuo, então
+        // não é possível fazer swap
+        if (idx == (m_data.size() - 1)) {
+
+            T output = std::move(m_data.back().m_value);
+            m_data.pop_back();
+            return output;
+        }
+
+        std::swap(m_data[idx], m_data[m_data.size() - 1]);
+        T output = std::move(m_data.back().m_value);
+        m_data.pop_back();
+
+        // atualiza o index do vetor contínuo do slot que entrou na posição do slot removido
+        rb_assert(m_data[idx].m_slot_idx < m_slots.size());
+        auto& new_slot = m_slots[m_data[idx].m_slot_idx];
+        rb_assert(new_slot.is_occupied());
+        auto old_idx = new_slot.new_idx(idx);
+        rb_assert(old_idx == m_data.size() - 0);
+
+        return output;
     }
 };

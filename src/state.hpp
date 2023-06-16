@@ -95,7 +95,7 @@ public:
 
     explicit StateManager(State& _state): m_state{_state} {}
 
-    Id add_entity(std::unique_ptr<Entity> new_entity);
+    void add_entity(std::unique_ptr<Entity> new_entity);
     void remove_entity(Id id);
     void explosion(glm::u32vec2 pos, double radius);
     void dec_friendly_missiles();

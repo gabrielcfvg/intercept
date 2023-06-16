@@ -6,7 +6,6 @@
 #include <thread>
 
 // extern
-#include "new_slotmap.hpp"
 #include <SFML/Graphics/RectangleShape.hpp>
 #include <SFML/Graphics/RenderWindow.hpp>
 #include <SFML/Window.hpp>
@@ -126,7 +125,6 @@ private:
 int main() {
 
     fmt::print("foo bar\n");
-
     ContextManager ctx_manager{};
     ctx_manager.run();
 }
