@@ -10,14 +10,13 @@
 
 
 
-using T = int;
-
+template <typename T>
 class SlotMap {
 
 private:
 
     // it is theoretically and practically impossible for an item to exist with the maximum
-    // position, since the smallest possible slot has a m_size greater than 1 byte
+    // position, since the smallest possible slot has m_size greater than 1 byte
     static inline size_t NONE = SIZE_MAX;
     using Version = uint64_t;
 
@@ -41,8 +40,8 @@ private:
 
     public:
 
-        Slot(Slot&&) = default;
-        Slot& operator=(Slot&&) = default;
+        Slot(Slot&&) noexcept = default;
+        Slot& operator=(Slot&&) noexcept = default;
         Slot(Slot const&) = delete;
         Slot& operator=(Slot const&) = delete;
 
@@ -130,6 +129,26 @@ public:
         size_t m_idx;
 
         Key(Version version, size_t idx): m_version(version), m_idx(idx) {}
+
+    public:
+
+        [[nodiscard]]
+        static Key __build_key(size_t idx, Version version) {
+
+            return Key{version, idx};
+        }
+
+        [[nodiscard]]
+        size_t get_idx() const {
+
+            return m_idx;
+        }
+
+        [[nodiscard]]
+        Version get_version() {
+
+            return m_version;
+        }
     };
 
 private:
@@ -169,7 +188,6 @@ public:
         return m_data[m_slots[key.m_idx].get_idx()].m_value;
     }
 
-    [[nodiscard]]
     Key push(T&& new_item) {
 
         // aloca um novo slot vazio caso não haja nenhum disponível
@@ -216,8 +234,27 @@ public:
         auto& slot = m_slots[slot_idx];
         auto data_idx = slot.get_idx();
 
+        // torna o slot vazio e coloca ele no início da lista de slots vazios
+        // colocando o primeiro anterior na segunda posição;
         slot.to_empty(m_next_free_head);
         m_next_free_head = slot_idx;
+
+        T item = this->swap_remove_data(data_idx);
+        m_size -= 1;
+
+        return item;
+    }
+
+    [[nodiscard]]
+    size_t size() const {
+
+        return m_size;
+    }
+
+    [[nodiscard]]
+    size_t capacity() {
+
+        return m_slots.size();
     }
 
 
