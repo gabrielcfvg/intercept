@@ -42,7 +42,7 @@ public:
     void render(sf::RenderWindow& window) const override {
 
         auto circle = sf::CircleShape{};
-        circle.setPosition((float)m_pos.x, (float)m_pos.y);
+        circle.setPosition((float)m_pos.x - (float)m_current_radius, (float)m_pos.y - (float)m_current_radius);
         circle.setRadius((float)m_current_radius);
         circle.setFillColor(explosion_color);
         window.draw(circle);
@@ -69,8 +69,6 @@ public:
 
     void update(StateManager& state, double delta) override {
 
-        fmt::println("missile {}x{}", m_pos.x, m_pos.y);
-
         auto old_pos = m_pos;
         m_pos += m_dir * m_model->speed * delta;
         m_flight_distance -= glm::distance(old_pos, m_pos);
@@ -90,7 +88,7 @@ public:
     void render(sf::RenderWindow& window) const override {
 
         auto tail = sf::RectangleShape{};
-        tail.setSize({(float)glm::distance((glm::dvec2)m_origin, m_pos), 2.f});
+        tail.setSize({(float)glm::distance((glm::dvec2)m_origin, m_pos), 1.f});
         tail.setPosition((float)m_origin.x, (float)m_origin.y);
         tail.setRotation(glm::degrees((float)atan2(m_dir.y, m_dir.x)));
         tail.setFillColor(m_model->tail_color);
@@ -99,7 +97,7 @@ public:
 
         auto circle = sf::CircleShape{};
         circle.setRadius((float)missile_radius);
-        circle.setPosition((float)m_pos.x, (float)m_pos.y);
+        circle.setPosition((float)m_pos.x - (float)missile_radius, (float)m_pos.y - (float)missile_radius);
         circle.setFillColor(m_model->color);
         circle.setOutlineThickness(0);
         window.draw(circle);

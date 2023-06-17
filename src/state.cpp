@@ -75,4 +75,24 @@ void StateManager::dec_enemy_missiles() {
 
     rb_assert(m_state.m_alive_enemy_missiles > 0);
     m_state.m_alive_enemy_missiles -= 1;
+}
+
+void StateManager::flush(){
+
+    while ((m_existential_commands.empty() == false) || (m_misc_commands.empty() == false)) {
+
+        while (m_existential_commands.empty() == false) {
+
+            auto command = std::move(m_existential_commands.front());
+            m_existential_commands.pop();
+            command->execute(m_state);
+        }
+
+        if (m_misc_commands.empty() == false) {
+
+            auto command = std::move(m_misc_commands.front());
+            m_misc_commands.pop();
+            command->execute(m_state);
+        }
+    }
 };

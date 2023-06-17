@@ -105,25 +105,5 @@ private:
 
     friend State;
 
-    void flush() {
-
-    again:;
-
-        while (m_existential_commands.empty() == false) {
-
-            auto command = std::move(m_existential_commands.front());
-            m_existential_commands.pop();
-
-            command->execute(m_state);
-        }
-
-        if (m_misc_commands.empty() == false) {
-
-            auto command = std::move(m_misc_commands.front());
-            m_misc_commands.pop();
-
-            command->execute(m_state);
-            goto again;
-        }
-    }
+    void flush();
 };

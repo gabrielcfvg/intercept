@@ -20,7 +20,7 @@ inline glm::vec2 const gun_position{window_size.x / 2, window_size.y - ground_le
 inline uint32_t const framerate = 60;
 inline uint32_t const cursor_width = 10;
 inline sf::Color explosion_color = {255, 50, 50};
-inline double const missile_radius = 4;
+inline double const missile_radius = 2;
 
 struct MissileModel {
     sf::Color color;

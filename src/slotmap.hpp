@@ -231,8 +231,6 @@ private:
 
 public:
 
-    // public funcs
-
     SlotMap(): m_next_free_head(NONE), m_slots(), m_data(), m_size(0) {}
 
     [[nodiscard]]

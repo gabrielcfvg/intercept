@@ -55,7 +55,6 @@ public:
             }
 
             delta = (double)glm::max((uint64_t)cycle_time, (uint64_t)min_time) / (double)1'000'000'000;
-            fmt::println("delta: {}", delta);
         }
     }
 
