@@ -11,6 +11,8 @@
 
 void State::update_entities(double delta) {
 
+    this->update_missiles(delta);
+
     auto state_manager = StateManager{*this};
     for (auto& entity: m_entities)
         entity->update(state_manager, delta);
@@ -31,17 +33,35 @@ void State::new_missile(glm::u32vec2 orig, glm::u32vec2 target, MissileModel* mo
 
     auto missile = std::make_unique<Missile>(orig, dir, distance, model);
     this->create_entity(std::move(missile));
-
-    if (model->friendly == true)
-        m_alive_friendly_missiles += 1;
-    else
-        m_alive_enemy_missiles += 1;
 }
 
 void State::create_entity(std::unique_ptr<Entity> new_entity) {
 
     auto id = m_entities.push(std::move(new_entity));
     m_entities.get(id)->set_id(id);
+}
+
+void State::update_missiles(double delta) {
+
+    m_delta_accumulator += delta;
+    if (m_delta_accumulator < 3)
+        return;
+
+    m_delta_accumulator = 0;
+    auto wave = gen_enemy_wave(m_score);
+
+    for (auto& cords: wave)
+        this->new_missile(cords.first, cords.second, &enemy_missile);
+}
+
+uint64_t State::get_score() const {
+
+    return m_score;
+}
+
+uint64_t State::get_max_score() const {
+
+    return m_max_score;
 }
 
 
@@ -59,22 +79,10 @@ void StateManager::remove_entity(Id id) {
     m_existential_commands.push(std::unique_ptr<RemoveEntityCommand>{new_command});
 }
 
-void StateManager::explosion(glm::u32vec2 pos, double radius) {
+void StateManager::explosion(glm::u32vec2 pos, double radius, MissileModel* model) {
 
-    auto new_command = new ExplosionCommand{*this, pos, radius};
+    auto new_command = new ExplosionCommand{*this, m_state, pos, radius, model};
     m_misc_commands.push(std::unique_ptr<ExplosionCommand>{new_command});
-}
-
-void StateManager::dec_friendly_missiles() {
-
-    rb_assert(m_state.m_alive_friendly_missiles > 0);
-    m_state.m_alive_friendly_missiles -= 1;
-}
-
-void StateManager::dec_enemy_missiles() {
-
-    rb_assert(m_state.m_alive_enemy_missiles > 0);
-    m_state.m_alive_enemy_missiles -= 1;
 }
 
 void StateManager::flush(){
@@ -95,4 +103,18 @@ void StateManager::flush(){
             command->execute(m_state);
         }
     }
-};
+}
+
+void StateManager::hit_ground(MissileModel* model) {
+
+    if (model->friendly == true)
+        return;
+
+    auto dec = m_state.m_max_score / 2;
+    if (m_state.m_score >= dec)
+        m_state.m_score -= dec;
+    else {
+        m_state.m_score = 0;
+        m_state.m_max_score = 0;
+    }
+}

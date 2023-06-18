@@ -6,6 +6,7 @@
 #include <thread>
 
 // extern
+#include <SFML/Graphics.hpp>
 #include <SFML/Graphics/RectangleShape.hpp>
 #include <SFML/Graphics/RenderWindow.hpp>
 #include <SFML/Window.hpp>
@@ -28,12 +29,15 @@ private:
     State m_state;
     glm::u32vec2 m_mouse_position = {0, 0};
 
+    sf::Font m_font;
+
 public:
 
     ContextManager() {
 
         auto flags = sf::Style::Close | sf::Style::Titlebar;
         m_window.create(sf::VideoMode(window_size.x, window_size.y), window_name, flags);
+        rb_runtime_assert(m_font.loadFromFile("roboto_mono.ttf"), "erro ao ler a fonte");
     }
 
     void run() {
@@ -82,8 +86,9 @@ private:
                     break;
 
                 case sf::Event::MouseButtonPressed:
-                    // TODO: lançar míssil contra a posição do mouse
-                    m_state.new_missile(gun_position, m_mouse_position, &friendly_missile);
+
+                    if (m_mouse_position.y < ground_level)
+                        m_state.new_missile(gun_position, m_mouse_position, &friendly_missile);
                     break;
 
                 case sf::Event::MouseMoved:
@@ -108,13 +113,23 @@ private:
         // render ground
         auto brown_color = sf::Color{61, 40, 22};
         auto ground_rectangle = sf::RectangleShape{};
-        ground_rectangle.setSize({(float)window_size.x, (float)ground_level});
+        ground_rectangle.setSize({(float)window_size.x, (float)window_size.y - (float)ground_level});
         ground_rectangle.setFillColor(brown_color);
-        ground_rectangle.setPosition(0, (float)window_size.y - (float)ground_level);
+        ground_rectangle.setPosition(0, (float)ground_level);
         m_window.draw(ground_rectangle);
 
         // render state
         m_state.render_entities(m_window);
+
+        // render score
+        sf::Text score_display{fmt::format("score {}", m_state.get_score()), m_font, 25};
+        score_display.setPosition(10, 10);
+        m_window.draw(score_display);
+
+        // render_max_score
+        sf::Text max_score_display{fmt::format("max score {}", m_state.get_max_score()), m_font, 25};
+        max_score_display.setPosition(10, 35);
+        m_window.draw(max_score_display);
 
         m_window.display();
     }

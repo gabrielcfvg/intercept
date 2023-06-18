@@ -28,7 +28,7 @@ public:
 
     // events
     virtual void update(StateManager&, double) = 0;
-    virtual void explosion(StateManager&, glm::u32vec2, double) = 0;
+    virtual void explosion(StateManager&, glm::u32vec2, double, MissileModel*, bool& shotdown) = 0;
 
     void set_id(Id id) {
 

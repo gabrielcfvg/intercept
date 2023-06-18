@@ -13,8 +13,8 @@
 [[noreturn]]
 inline void panic(std::string const& message) {
 
-    auto fmessage = fmt::format("[PANIC]: {}", message);
-    fmt::println("{}", fmt::styled(fmessage, fmt::fg(fmt::color::red)));
+    auto fmt_message = fmt::format("[PANIC]: {}", message);
+    fmt::println("{}", fmt::styled(fmt_message, fmt::fg(fmt::color::red)));
     exit(1);
 }
 

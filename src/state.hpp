@@ -8,6 +8,7 @@
 #include "assert.hpp"
 #include "defs.hpp"
 #include "entity.hpp"
+#include "missile_generator.hpp"
 #include "slotmap.hpp"
 
 
@@ -19,8 +20,9 @@ public:
 
 private:
 
-    uint64_t m_alive_friendly_missiles = 0;
-    uint64_t m_alive_enemy_missiles = 0;
+    uint64_t m_score = 0;
+    uint64_t m_max_score = 0;
+    double m_delta_accumulator = 0;
     SlotMap<std::unique_ptr<Entity>> m_entities;
 
 public:
@@ -29,9 +31,13 @@ public:
     void update_entities(double delta);
     void render_entities(sf::RenderWindow& window);
 
+    uint64_t get_score() const;
+    uint64_t get_max_score() const;
+
 private:
 
     void create_entity(std::unique_ptr<Entity> new_entity);
+    void update_missiles(double delta);
 };
 
 
@@ -72,16 +78,38 @@ private:
     struct ExplosionCommand : public Command {
 
         StateManager& m_state_manager;
+        State& m_state;
         glm::u32vec2 m_pos;
         double m_radius;
+        MissileModel* m_model;
+        uint32_t m_shotdown_count = 0;
 
-        ExplosionCommand(StateManager& state_manager, glm::u32vec2 pos, double radius):
-            m_state_manager(state_manager), m_pos(pos), m_radius(radius) {}
+        ExplosionCommand(StateManager& state_manager, State& state, glm::u32vec2& pos, double radius,
+                         MissileModel* model):
+            m_state_manager(state_manager),
+            m_state(state), m_pos(pos), m_radius(radius), m_model(model) {}
 
         void execute(State& state) override {
 
-            for (auto& entity: state.m_entities)
-                entity->explosion(m_state_manager, m_pos, m_radius);
+            for (auto& entity: state.m_entities) {
+
+                bool shotdown = false;
+                entity->explosion(m_state_manager, m_pos, m_radius, m_model, shotdown);
+
+                if (shotdown == true)
+                    m_shotdown_count += 1;
+            }
+        }
+
+        ~ExplosionCommand() override {
+
+            if (m_shotdown_count > 0) {
+
+                m_state.m_score += (uint64_t)pow((double)2, (double)m_shotdown_count);
+
+                if (m_state.m_score > m_state.m_max_score)
+                    m_state.m_max_score = m_state.m_score;
+            }
         }
     };
 
@@ -97,9 +125,8 @@ public:
 
     void add_entity(std::unique_ptr<Entity> new_entity);
     void remove_entity(Id id);
-    void explosion(glm::u32vec2 pos, double radius);
-    void dec_friendly_missiles();
-    void dec_enemy_missiles();
+    void explosion(glm::u32vec2 pos, double radius, MissileModel* model);
+    void hit_ground(MissileModel* model);
 
 private:
 
