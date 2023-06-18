@@ -44,7 +44,7 @@ void State::create_entity(std::unique_ptr<Entity> new_entity) {
 void State::update_missiles(double delta) {
 
     m_delta_accumulator += delta;
-    if (m_delta_accumulator < 3)
+    if (m_delta_accumulator < wave_delay)
         return;
 
     m_delta_accumulator = 0;

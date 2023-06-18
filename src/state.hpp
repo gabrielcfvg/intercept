@@ -22,7 +22,7 @@ private:
 
     uint64_t m_score = 0;
     uint64_t m_max_score = 0;
-    double m_delta_accumulator = 0;
+    double m_delta_accumulator = wave_delay;
     SlotMap<std::unique_ptr<Entity>> m_entities;
 
 public:

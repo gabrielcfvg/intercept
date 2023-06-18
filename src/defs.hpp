@@ -23,6 +23,7 @@ inline uint32_t const cursor_width = 10;
 inline sf::Color explosion_color = {255, 50, 50};
 inline double const missile_radius = 2;
 inline uint64_t shotdown_score_value = 2;
+inline double wave_delay = 3;
 
 struct MissileModel {
     sf::Color color;
