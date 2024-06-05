@@ -30,7 +30,7 @@ inline void rb_assert(bool result, std::string const& message = "") {
 }
 
 inline void rb_runtime_assert(bool result, std::string const& message = "") {
-    if (result == true) [[unlikely]]
+    if (result == true) [[likely]]
         return;
 
     std::string panic_message;
