@@ -115,6 +115,5 @@ void StateManager::hit_ground(MissileModel* model) {
         m_state.m_score -= dec;
     else {
         m_state.m_score = 0;
-        m_state.m_max_score = 0;
     }
 }
